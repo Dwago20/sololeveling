@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Leveling: Shadow Monarch - Enhanced</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: linear-gradient(135deg, #0c0c0c 0%, #1a0033 50%, #000000 100%); color: #ffffff; font-family: 'Orbitron', monospace; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        #gameContainer { position: relative; width: 1200px; height: 700px; background: linear-gradient(135deg, #0a0a0a 0%, #1e1e3f 100%); border: 4px solid #9d4edd; border-radius: 20px; overflow: hidden; box-shadow: 0 0 50px rgba(157, 78, 221, 0.3); }
+        #gameCanvas { display: block; background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%); }
+        #ui { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
+        #hud { position: absolute; top: 20px; left: 20px; right: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; pointer-events: none; }
+        .hud-panel { background: rgba(0, 0, 0, 0.85); padding: 12px; border-radius: 15px; border: 2px solid #9d4edd; backdrop-filter: blur(15px); box-shadow: inset 0 0 20px rgba(157, 78, 221, 0.1); }
+        .rank-display { font-size: 24px; font-weight: 900; color: #ffd700; text-shadow: 0 0 10px rgba(255, 215, 0, 0.8); text-align: center; margin-bottom: 8px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; font-size: 12px; }
+        .health-bar, .exp-bar, .boss-health-bar { height: 10px; background: rgba(255, 255, 255, 0.1); border: 1px solid #666; border-radius: 5px; overflow: hidden; position: relative; }
+        .health-bar { width: 100px; } .exp-bar { width: 100px; } .boss-health-bar { width: 180px; }
+        .health-fill { height: 100%; background: linear-gradient(90deg, #ff4757 0%, #ff6b7a 100%); transition: width 0.3s ease; box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3); }
+        .exp-fill { height: 100%; background: linear-gradient(90deg, #3742fa 0%, #5352ed 100%); transition: width 0.3s ease; box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3); }
+        .boss-health-fill { height: 100%; background: linear-gradient(90deg, #ff3838 0%, #ff6b6b 50%, #ffa502 100%); transition: width 0.3s ease; box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4); }
+        #shadowArmy { position: absolute; bottom: 20px; left: 20px; right: 20px; display: flex; gap: 12px; flex-wrap: wrap; pointer-events: none; }
+        .shadow-slot { width: 70px; height: 70px; background: rgba(0, 0, 0, 0.9); border: 3px solid #4a5568; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 9px; text-align: center; transition: all 0.3s ease; }
+        .shadow-active { border-color: #9d4edd; background: rgba(157, 78, 221, 0.2); box-shadow: 0 0 20px rgba(157, 78, 221, 0.5); transform: scale(1.05); }
+        .modal { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.95); padding: 40px; border-radius: 20px; border: 3px solid #9d4edd; text-align: center; display: none; pointer-events: all; backdrop-filter: blur(20px); box-shadow: 0 0 50px rgba(157, 78, 221, 0.3); max-height: 80vh; overflow-y: auto; }
+        .modal h2 { color: #9d4edd; margin-bottom: 20px; font-size: 24px; text-shadow: 0 0 10px rgba(157, 78, 221, 0.8); }
+        .btn { background: linear-gradient(45deg, #9d4edd 0%, #c77dff 100%); color: white; border: none; padding: 12px 25px; font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; margin: 8px; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s ease; font-family: 'Orbitron', monospace; }
+        .btn:hover { transform: scale(1.05); box-shadow: 0 5px 25px rgba(157, 78, 221, 0.4); }
+        .btn-secondary { background: linear-gradient(45deg, #4a5568 0%, #6a7d95 100%); }
+        #upgradeModal { max-width: 700px; }
+        .upgrade-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .upgrade-card { background: rgba(157, 78, 221, 0.1); border: 2px solid #9d4edd; border-radius: 15px; padding: 15px; cursor: pointer; transition: all 0.3s ease; }
+        .upgrade-card:hover { background: rgba(157, 78, 221, 0.2); transform: scale(1.05); box-shadow: 0 0 20px rgba(157, 78, 221, 0.3); }
+        .upgrade-card h3 { color: #c77dff; margin-bottom: 8px; font-size: 14px; }
+        .upgrade-card p { font-size: 11px; opacity: 0.8; line-height: 1.3; }
+        .controls { position: absolute; bottom: 20px; right: 20px; font-size: 11px; opacity: 0.7; background: rgba(0, 0, 0, 0.5); padding: 8px; border-radius: 8px; }
+        .damage-number { position: absolute; font-size: 14px; font-weight: bold; pointer-events: none; z-index: 1000; }
+        .achievement-popup { position: absolute; top: 100px; right: 20px; background: rgba(255, 215, 0, 0.95); color: #000; padding: 15px; border-radius: 10px; border: 2px solid #ffd700; font-size: 14px; font-weight: bold; box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); opacity: 0; transform: translateX(300px); transition: all 0.5s ease; }
+        .achievement-show { opacity: 1; transform: translateX(0); }
+        .element-indicator { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
+        .fire { color: #ff4757; } .ice { color: #70a1ff; } .shadow { color: #9d4edd; } .physical { color: #ffffff; }
+        @keyframes floatUp { 0% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-50px); } }
+        @keyframes screenShake { 0%, 100% { transform: translate(0,0); } 25% { transform: translate(-2px,2px); } 50% { transform: translate(2px,-2px); } 75% { transform: translate(-2px,-2px); } }
+        .floating-damage { animation: floatUp 1s ease-out forwards; }
+        .screen-shake { animation: screenShake 0.3s ease-in-out; }
+        #artifacts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; }
+        .artifact-slot { width: 50px; height: 50px; background: rgba(0, 0, 0, 0.8); border: 2px solid #666; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .artifact-equipped { border-color: #ffd700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.5); }
+        .legendary { border-color: #ff6348; box-shadow: 0 0 15px rgba(255, 99, 72, 0.5); }
+        .epic { border-color: #9c88ff; box-shadow: 0 0 15px rgba(156, 136, 255, 0.5); }
+        .rare { border-color: #70a1ff; box-shadow: 0 0 15px rgba(112, 161, 255, 0.5); }
+        .uncommon { border-color: #7bed9f; box-shadow: 0 0 15px rgba(123, 237, 159, 0.5); }
+        #mobileControls { position: absolute; bottom: 100px; left: 20px; display: none; grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(3, 60px); gap: 10px; }
+        .mobile-btn { background: rgba(157, 78, 221, 0.7); border: 2px solid #9d4edd; border-radius: 50%; color: white; font-size: 18px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
+        .mobile-btn:active { background: rgba(157, 78, 221, 1); transform: scale(0.95); }
+        @media (max-width: 768px) { #mobileControls { display: grid; } .controls { display: none; } }
+    </style>
+    <script>
+        window.addEventListener('error', (e) => { console.error('Error:', e.message); });
+    </script>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        <div id="ui">
+            <div id="hud">
+                <div class="hud-panel">
+                    <div class="rank-display" id="rankDisplay">F-RANK GATE</div>
+                    <div class="stat-row"><span>Level:</span><span id="playerLevel">1</span></div>
+                    <div class="stat-row"><span>Score:</span><span id="score">0</span></div>
+                    <div class="stat-row"><span>HP:</span><div class="health-bar"><div class="health-fill" id="healthFill"></div></div></div>
+                    <div class="stat-row"><span id="healthText">100/100</span></div>
+                </div>
+                <div class="hud-panel">
+                    <div class="stat-row"><span>Wave:</span><span id="waveNumber">1</span></div>
+                    <div class="stat-row"><span>Enemies:</span><span id="enemyCount">0</span></div>
+                    <div class="stat-row"><span>Boss:</span><span id="bossStatus">None</span></div>
+                    <div class="stat-row"><span>EXP:</span><div class="exp-bar"><div class="exp-fill" id="expFill"></div></div></div>
+                    <div class="stat-row"><span id="expText">0/100</span></div>
+                </div>
+                <div class="hud-panel">
+                    <div class="stat-row"><span>ATK:</span><span id="attackDamage">25</span></div>
+                    <div class="stat-row"><span>SPD:</span><span id="moveSpeed">3</span></div>
+                    <div class="stat-row"><span>Shadows:</span><span id="shadowCount">0/8</span></div>
+                    <div class="stat-row"><span>Element:</span><span id="damageType" class="physical">Physical</span></div>
+                    <div class="stat-row" id="bossHealthContainer" style="display: none;"><span>Boss HP:</span><div class="boss-health-bar"><div class="boss-health-fill" id="bossHealthFill"></div></div></div>
+                </div>
+                <div class="hud-panel">
+                    <div class="stat-row"><span>Artifacts:</span><span id="artifactCount">0/3</span></div>
+                    <div id="artifacts"><div class="artifact-slot" id="artifact0">📿</div><div class="artifact-slot" id="artifact1">⚔️</div><div class="artifact-slot" id="artifact2">🛡️</div></div>
+                </div>
+            </div>
+            <div id="shadowArmy">
+                <div class="shadow-slot" id="shadow0">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow1">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow2">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow3">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow4">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow5">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow6">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow7">Empty<br>Slot</div>
+            </div>
+            <div class="controls">
+                <strong>WASD/Arrows:</strong> Move<br>
+                <strong>P:</strong> Pause<br>
+                <strong>M:</strong> Mute<br>
+                <strong>Auto-Attack:</strong> ON
+            </div>
+            <div id="mobileControls">
+                <div></div><div class="mobile-btn" data-key="w">↑</div><div></div>
+                <div class="mobile-btn" data-key="a">←</div><div class="mobile-btn" data-key="p">⏸</div><div class="mobile-btn" data-key="d">→</div>
+                <div></div><div class="mobile-btn" data-key="s">↓</div><div></div>
+            </div>
+        </div>
+        <div id="achievementPopup" class="achievement-popup">Achievement Unlocked!</div>
+        <div id="bossDefeatModal" class="modal">
+            <h2>BOSS DEFEATED!</h2>
+            <p id="bossDefeatText">You have defeated the Shadow Orc!</p>
+            <p style="color: #c77dff; margin: 20px 0;">The fallen shall rise to serve the Shadow Monarch!</p>
+            <div id="artifactDrop" style="display: none; margin: 20px 0;">
+                <h3 style="color: #ffd700;">Legendary Artifact Obtained!</h3>
+                <p id="artifactName" style="color: #ff6348;"></p>
+                <p id="artifactDesc" style="font-size: 12px; opacity: 0.8;"></p>
+            </div>
+            <button class="btn" onclick="resurrectBoss()">⚡ ARISE! ⚡</button>
+        </div>
+        <div id="upgradeModal" class="modal">
+            <h2>LEVEL UP! Choose Your Power</h2>
+            <div class="upgrade-grid" id="upgradeOptions"></div>
+        </div>
+        <div id="pauseMenu" class="modal">
+            <h2>⏸️ GAME PAUSED</h2>
+            <p>Shadow Monarch's Training</p>
+            <div style="margin: 20px 0;">
+                <p>Achievements: <span id="achievementProgress">0/15</span></p>
+                <p>Highest Wave: <span id="highestWave">1</span></p>
+                <p>Total Score: <span id="totalScore">0</span></p>
+            </div>
+            <button class="btn" onclick="togglePause()">Resume</button>
+            <button class="btn btn-secondary" onclick="toggleMute()">🔊 Sound</button>
+            <button class="btn btn-secondary" onclick="restartGame()">Restart</button>
+        </div>
+    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let audioContext = null; let soundEnabled = true;
+        function initAudio(){ try{ audioContext = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ console.log('Audio not supported'); soundEnabled=false; } }
+        function createSound(f,d,t='sine',v=0.1){ if(!soundEnabled||!audioContext) return; try{ const o=audioContext.createOscillator(); const g=audioContext.createGain(); o.connect(g); g.connect(audioContext.destination); o.frequency.setValueAtTime(f,audioContext.currentTime); o.type=t; g.gain.setValueAtTime(v,audioContext.currentTime); g.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+d); o.start(audioContext.currentTime); o.stop(audioContext.currentTime+d);}catch(e){console.log('Sound creation failed');} }
+        function playSound(s){ if(!soundEnabled) return; if(s==='hit') createSound(200,0.1,'square',0.05); else if(s==='kill') createSound(300,0.2,'sawtooth',0.08); else if(s==='levelup'){ createSound(440,0.3,'sine',0.1); createSound(550,0.3,'sine',0.08);} else if(s==='boss') createSound(100,0.5,'triangle',0.1); else if(s==='arise') createSound(666,0.4,'sawtooth',0.12); }
+        let gameState={paused:false,currentRank:0,wave:1,score:0,bossDefeated:false,lastDefeatedBoss:null,upgradesPending:0,waveInProgress:false,nextWaveTimer:0,achievements:{},totalScore:parseInt(sessionStorage.getItem('totalScore')||'0'),highestWave:parseInt(sessionStorage.getItem('highestWave')||'1'),screenShake:0,difficulty:1.0};
+        const achievements={firstKill:{name:'First Blood',desc:'Defeat your first enemy',unlocked:false},firstBoss:{name:'Boss Hunter',desc:'Defeat your first boss',unlocked:false},shadowArmy:{name:'Rise, My Shadows!',desc:'Resurrect your first shadow',unlocked:false},wave10:{name:'Persistent Hunter',desc:'Reach wave 10',unlocked:false},level10:{name:'Growing Stronger',desc:'Reach level 10',unlocked:false},rankUp:{name:'Rank Advancement',desc:'Advance to E-Rank',unlocked:false},perfectWave:{name:'Flawless Victory',desc:'Complete a wave without taking damage',unlocked:false},speedKill:{name:'Lightning Strike',desc:'Kill 5 enemies in 3 seconds',unlocked:false},artifact:{name:'Treasure Hunter',desc:'Obtain your first artifact',unlocked:false},fullArmy:{name:'Shadow Legion',desc:'Have a full shadow army (8 shadows)',unlocked:false},critMaster:{name:'Critical Eye',desc:'Achieve 50% crit chance',unlocked:false},tankMode:{name:'Immovable Object',desc:'Reach 500 max HP',unlocked:false},speedDemon:{name:'Flash Step',desc:'Reach 8 movement speed',unlocked:false},damageDealer:{name:'One Punch',desc:'Deal 200+ damage in a single hit',unlocked:false},survivor:{name:'Shadow Monarch',desc:'Reach S-Rank',unlocked:false}};
+        const savedAchievements=sessionStorage.getItem('achievements'); if(savedAchievements){ const parsed=JSON.parse(savedAchievements); Object.keys(parsed).forEach(k=>{ if(achievements[k]) achievements[k].unlocked=parsed[k]; });}
+        const enemyTypes={goblin:{hp:40,speed:2,damage:12,size:14,color:'#228B22',exp:20,ai:'aggressive',attackRange:25,damageType:'physical',resistances:{fire:-0.2,ice:0,shadow:0.1}},skeleton:{hp:60,speed:1.5,damage:18,size:16,color:'#F5F5DC',exp:30,ai:'guard',attackRange:30,damageType:'physical',resistances:{fire:-0.3,ice:0.4,shadow:0.2}},orc:{hp:80,speed:1.2,damage:25,size:18,color:'#8B4513',exp:40,ai:'tank',attackRange:35,damageType:'physical',resistances:{fire:0.1,ice:-0.1,shadow:0}},demon:{hp:90,speed:2.5,damage:30,size:20,color:'#8B0000',exp:50,ai:'hit_and_run',attackRange:45,damageType:'fire',resistances:{fire:0.5,ice:-0.4,shadow:0.1}}};
+        const bossTypes={shadowOrc:{hp:300,speed:1.5,damage:50,size:40,color:'#4B0082',name:'Shadow Orc',exp:300,ai:'boss',damageType:'shadow',abilities:['charge','slam','shadowBurst'],resistances:{fire:0.1,ice:0.1,shadow:0.3}}};
+        const player={x:600,y:350,width:20,height:20,speed:3,health:100,maxHealth:100,level:1,exp:0,expToNext:100,attackDamage:25,attackRange:100,attackSpeed:1.0,lastAttack:0,attackCooldown:800,critChance:0.1,critDamage:2.0,vampirism:0,damageType:'physical',elementalDamage:0,resistances:{fire:0,ice:0,shadow:0},lastDamageTaken:0,invulnTime:0,abilities:{shadowStep:false,berserker:false,auraOfDeath:false,multiStrike:false},artifacts:[]};
+        let enemies=[],bosses=[],shadowArmy=[],particles=[],killStreak=0,killStreakTimer=0;
+        const keys={};
+        document.addEventListener('keydown',(e)=>{ const k=e.key.toLowerCase(); keys[k]=true; if(k==='p') togglePause(); if(k==='m') toggleMute(); });
+        document.addEventListener('keyup',(e)=>{ keys[e.key.toLowerCase()]=false; });
+        document.querySelectorAll('.mobile-btn').forEach(btn=>{ btn.addEventListener('touchstart',(e)=>{ e.preventDefault(); const k=btn.dataset.key; keys[k]=true; if(k==='p') togglePause(); }); btn.addEventListener('touchend',(e)=>{ e.preventDefault(); const k=btn.dataset.key; keys[k]=false; }); });
+        let lastTime=0; function gameLoop(t){ if(gameState.paused){ requestAnimationFrame(gameLoop); return; } const dt=t-lastTime; lastTime=t; update(dt); render(); requestAnimationFrame(gameLoop); }
+        function update(dt){ if(gameState.paused) return; if(gameState.screenShake>0) gameState.screenShake-=dt; updatePlayer(dt); autoAttack(); updateEnemies(dt); updateBosses(dt); updateShadowArmy(dt); updateParticles(dt); updateWaveSystem(dt); if(killStreakTimer>0){ killStreakTimer-=dt; if(killStreakTimer<=0) killStreak=0; } checkAchievements(); updateWaveDisplay(); }
+        function updatePlayer(dt){ let dx=0,dy=0; if(keys['w']||keys['arrowup']) dy-=player.speed; if(keys['s']||keys['arrowdown']) dy+=player.speed; if(keys['a']||keys['arrowleft']) dx-=player.speed; if(keys['d']||keys['arrowright']) dx+=player.speed; if(dx&&dy){ dx*=0.707; dy*=0.707; } player.x+=dx; player.y+=dy; player.x=Math.max(player.width/2,Math.min(canvas.width-player.width/2,player.x)); player.y=Math.max(player.height/2,Math.min(canvas.height-player.height/2,player.y)); if(player.invulnTime>0) player.invulnTime-=dt; }
+        function autoAttack(){ const now=Date.now(); if(now-player.lastAttack<player.attackCooldown) return; let target=null,closest=Infinity; const hostiles=bosses.length?[...bosses,...enemies]:[...enemies]; hostiles.forEach(en=>{ const d=Math.hypot(en.x-player.x,en.y-player.y); if(d<=player.attackRange&&d<closest){ closest=d; target=en; } }); if(target){ attack(target); player.lastAttack=now; } }
+        function attack(target){ let dmg=player.attackDamage; if(Math.random()<player.critChance){ dmg*=player.critDamage; createDamageNumber(target.x,target.y,dmg,'#ffd700'); } else createDamageNumber(target.x,target.y,dmg,'#ffffff'); if(player.elementalDamage>0) dmg+=player.elementalDamage; const res=(target.resistances&&target.resistances[player.damageType])||0; dmg*=(1-res); target.health-=dmg; if(player.vampirism>0){ const heal=Math.floor(dmg*player.vampirism); if(heal>0){ player.health=Math.min(player.maxHealth,player.health+heal); createDamageNumber(player.x,player.y-20,'+'+heal,'#00ff00'); } } if(dmg>50) gameState.screenShake=100; if(target.health<=0) killEnemy(target); playSound('hit'); }
+        function createDamageNumber(x,y,val,color){ const el=document.createElement('div'); el.className='damage-number floating-damage'; el.textContent=Math.floor(val); el.style.color=color; el.style.left=x+'px'; el.style.top=y+'px'; document.getElementById('gameContainer').appendChild(el); setTimeout(()=>el.remove(),1000); }
+        function killEnemy(en){ const ei=enemies.indexOf(en); if(ei>-1) enemies.splice(ei,1); const bi=bosses.indexOf(en); if(bi>-1){ const b=bosses.splice(bi,1)[0]; bossDefeated(b); } gameState.score+=(en.exp||10); addExperience(en.exp||10); killStreak++; killStreakTimer=3000; createDeathParticles(en.x,en.y,en.color||'#fff'); updateWaveDisplay(); playSound('kill'); }
+        function bossDefeated(b){ gameState.bossDefeated=true; gameState.lastDefeatedBoss={x:b.x,y:b.y,hp:b.maxHealth,damage:b.damage,speed:b.speed,size:b.size}; if(Math.random()<0.3&&player.artifacts.length<3){ const art=generateArtifact(); player.artifacts.push(art); showBossDefeatModal(true,art); updateArtifactDisplay(); unlockAchievement('artifact'); } else showBossDefeatModal(false); playSound('boss'); }
+        function generateArtifact(){ const list=[{name:'Shadow Crown',effect:'Increases shadow damage by 50%',rarity:'legendary',type:'shadow'},{name:'Flame Heart',effect:'Converts damage to fire and adds 30 fire damage',rarity:'epic',type:'fire'},{name:'Frost Gem',effect:'Converts damage to ice and adds 25 ice damage',rarity:'epic',type:'ice'},{name:'Vampire Fang',effect:'15% life steal on attacks',rarity:'rare',type:'physical'},{name:'Critical Eye',effect:'Increases crit chance by 20%',rarity:'rare',type:'physical'},{name:'Speed Boots',effect:'Increases movement speed by 2',rarity:'uncommon',type:'physical'}]; const a=list[Math.floor(Math.random()*list.length)]; return {...a,id:Date.now(),equipped:true}; }
+        function showBossDefeatModal(has,art=null){ const m=document.getElementById('bossDefeatModal'); const d=document.getElementById('artifactDrop'); if(has&&art){ d.style.display='block'; document.getElementById('artifactName').textContent=art.name; document.getElementById('artifactDesc').textContent=art.effect; } else d.style.display='none'; m.style.display='block'; }
+        function resurrectBoss(){ if(gameState.lastDefeatedBoss&&shadowArmy.length<8){ const b=gameState.lastDefeatedBoss; const s={x:b.x,y:b.y,health:b.hp*0.8,maxHealth:b.hp*0.8,damage:b.damage*0.7,speed:b.speed*0.8,size:b.size*0.9,color:'#9d4edd',type:'shadow',lastAttack:0,attackCooldown:1000}; shadowArmy.push(s); updateShadowDisplay(); document.getElementById('bossDefeatModal').style.display='none'; playSound('arise'); unlockAchievement('shadowArmy'); } }
+        function updateEnemies(dt){ enemies.forEach(e=>{ const dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy); if(d>0){ const s=e.speed*(dt/16); e.x+=(dx/d)*s; e.y+=(dy/d)*s; } if(!e.lastAttack) e.lastAttack=0; if(!e.attackRange) e.attackRange=25; if(d<=e.attackRange&&Date.now()-e.lastAttack>=1000){ attackPlayer(e); e.lastAttack=Date.now(); } e.x=Math.max(e.size/2,Math.min(canvas.width-e.size/2,e.x)); e.y=Math.max(e.size/2,Math.min(canvas.height-e.size/2,e.y)); }); }
+        function updateBosses(dt){ bosses.forEach(b=>{ const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy); if(d>0){ const s=b.speed*(dt/16); b.x+=(dx/d)*s; b.y+=(dy/d)*s; } if(!b.lastAbility) b.lastAbility=0; if(b.abilities&&Date.now()-b.lastAbility>=5000){ useBossAbility(b); b.lastAbility=Date.now(); } if(!b.lastAttack) b.lastAttack=0; if(!b.attackRange) b.attackRange=45; if(d<=b.attackRange&&Date.now()-b.lastAttack>=2000){ attackPlayer(b); b.lastAttack=Date.now(); } b.x=Math.max(b.size/2,Math.min(canvas.width-b.size/2,b.x)); b.y=Math.max(b.size/2,Math.min(canvas.height-b.size/2,b.y)); updateBossHealthBar(b); }); }
+        function useBossAbility(b){ if(b.abilities.includes('charge')){ const dx=player.x-b.x,dy=player.y-b.y,d=Math.hypot(dx,dy); if(d>0){ b.x+=(dx/d)*100; b.y+=(dy/d)*100; } gameState.screenShake=60; } }
+        function attackPlayer(e){ if(player.invulnTime>0) return; let dmg=e.damage||10; const res=player.resistances[e.damageType]||0; dmg*=(1-res); player.health-=dmg; player.lastDamageTaken=Date.now(); player.invulnTime=600; gameState.screenShake=50; if(player.health<=0){ gameOver(); return; } updateHealthDisplay(); }
+        function updateShadowArmy(dt){ shadowArmy.forEach(s=>{ let t=null,c=Infinity; const list=bosses.length?[...bosses,...enemies]:[...enemies]; list.forEach(e=>{ const d=Math.hypot(e.x-s.x,e.y-s.y); if(d<c){ c=d; t=e; } }); if(t){ const dx=t.x-s.x,dy=t.y-s.y,d=Math.hypot(dx,dy); if(d>0){ const sp=s.speed*(dt/16); s.x+=(dx/d)*sp; s.y+=(dy/d)*sp; } if(d<=30&&Date.now()-s.lastAttack>=s.attackCooldown){ t.health-=s.damage; s.lastAttack=Date.now(); createDamageNumber(t.x,t.y,s.damage,'#c77dff'); if(t.health<=0) killEnemy(t); } } }); }
+        function updateParticles(dt){ for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.life-=dt; p.x+=p.vx*(dt/16); p.y+=p.vy*(dt/16); p.vy+=0.1; if(p.life<=0) particles.splice(i,1); } }
+        function createDeathParticles(x,y,color){ for(let i=0;i<8;i++) particles.push({x,y,vx:(Math.random()-0.5)*4,vy:(Math.random()-0.5)*4,life:1000,color,size:Math.random()*3+1}); }
+        function updateWaveSystem(dt){ if(!gameState.waveInProgress&&enemies.length===0&&bosses.length===0){ if(gameState.nextWaveTimer<=0) startWave(); else gameState.nextWaveTimer-=dt; } if(gameState.waveInProgress&&enemies.length===0&&bosses.length===0){ gameState.waveInProgress=false; gameState.nextWaveTimer=2000; } }
+        function startWave(){ gameState.waveInProgress=true; if(!(gameState.wave===1&&gameState.score===0)) gameState.wave++; const diff=Math.min(gameState.wave*gameState.difficulty,10); const cnt=Math.floor(5+diff*2); for(let i=0;i<cnt;i++) setTimeout(()=>{ spawnEnemy(); updateWaveDisplay(); },i*200); if(gameState.wave%5===0) setTimeout(()=>{ spawnBoss(); updateWaveDisplay(); },cnt*200+800); updateWaveDisplay(); }
+        function spawnEnemy(){ const types=Object.keys(enemyTypes); const type=types[Math.floor(Math.random()*types.length)]; const d=enemyTypes[type]; let x,y; do{ x=Math.random()*canvas.width; y=Math.random()*canvas.height; }while(Math.hypot(x-player.x,y-player.y)<120); enemies.push({x,y,health:d.hp,maxHealth:d.hp,speed:d.speed,damage:d.damage,size:d.size,color:d.color,type,exp:d.exp,ai:d.ai,attackRange:d.attackRange,damageType:d.damageType,resistances:d.resistances,lastAttack:0}); }
+        function spawnBoss(){ const keysB=Object.keys(bossTypes); const key=keysB[Math.floor(Math.random()*keysB.length)]; const d=bossTypes[key]; let x,y; do{ x=Math.random()*canvas.width; y=Math.random()*canvas.height; }while(Math.hypot(x-player.x,y-player.y)<150); const b={x,y,health:d.hp,maxHealth:d.hp,speed:d.speed,damage:d.damage,size:d.size,color:d.color,type:'boss',name:d.name,exp:d.exp,ai:d.ai,attackRange:d.attackRange||50,damageType:d.damageType,resistances:d.resistances,abilities:d.abilities,lastAttack:0,lastAbility:0}; bosses.push(b); showBossHealthBar(b); }
+        function showBossHealthBar(b){ const c=document.getElementById('bossHealthContainer'); c.style.display='block'; updateBossHealthBar(b); }
+        function updateBossHealthBar(b){ const f=document.getElementById('bossHealthFill'); const pct=Math.max(0,(b.health/b.maxHealth)*100); f.style.width=pct+'%'; }
+        function addExperience(a){ player.exp+=a; while(player.exp>=player.expToNext){ player.exp-=player.expToNext; levelUp(); } updateExpDisplay(); }
+        function levelUp(){ player.level++; player.maxHealth+=20; player.health=player.maxHealth; player.attackDamage+=5; player.expToNext=Math.floor(player.expToNext*1.2); gameState.upgradesPending++; showUpgradeModal(); updateHealthDisplay(); updateStatsDisplay(); playSound('levelup'); }
+        function showUpgradeModal(){ const m=document.getElementById('upgradeModal'); const o=document.getElementById('upgradeOptions'); const ups=generateUpgradeOptions(); o.innerHTML=''; ups.forEach(u=>{ const c=document.createElement('div'); c.className='upgrade-card'; c.innerHTML=`<h3>${u.name}</h3><p>${u.description}</p>`; c.onclick=()=>applyUpgrade(u); o.appendChild(c); }); m.style.display='block'; gameState.paused=true; }
+        function generateUpgradeOptions(){ const all=[{name:'Strength',description:'Increase attack damage by 15',effect:()=>player.attackDamage+=15},{name:'Vitality',description:'Increase max health by 50',effect:()=>player.maxHealth+=50},{name:'Agility',description:'Increase movement speed by 1',effect:()=>player.speed+=1},{name:'Critical Strike',description:'Increase crit chance by 10%',effect:()=>player.critChance+=0.1},{name:'Vampirism',description:'Gain 10% life steal',effect:()=>player.vampirism+=0.1},{name:'Shadow Mastery',description:'Increase elemental damage by 25',effect:()=>player.elementalDamage+=25},{name:'Fire Affinity',description:'Convert damage to fire and add 20 fire damage',effect:()=>{ player.damageType='fire'; player.elementalDamage+=20; }},{name:'Ice Affinity',description:'Convert damage to ice and add 18 ice damage',effect:()=>{ player.damageType='ice'; player.elementalDamage+=18; }}]; return all.sort(()=>0.5-Math.random()).slice(0,3); }
+        function applyUpgrade(u){ u.effect(); gameState.upgradesPending--; document.getElementById('upgradeModal').style.display='none'; gameState.paused=false; updateStatsDisplay(); updateHealthDisplay(); }
+        function render(){ ctx.clearRect(0,0,canvas.width,canvas.height); if(gameState.screenShake>0){ const s=gameState.screenShake/100; ctx.save(); ctx.translate((Math.random()-0.5)*s*10,(Math.random()-0.5)*s*10); } renderBackground(); renderParticles(); renderEnemies(); renderBosses(); renderShadowArmy(); renderPlayer(); if(gameState.screenShake>0) ctx.restore(); }
+        function renderBackground(){ ctx.strokeStyle='rgba(157, 78, 221, 0.1)'; ctx.lineWidth=1; for(let x=0;x<canvas.width;x+=50){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); } for(let y=0;y<canvas.height;y+=50){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); } }
+        function renderPlayer(){ ctx.save(); ctx.shadowColor='#9d4edd'; ctx.shadowBlur=20; ctx.fillStyle=player.invulnTime>0?'#ff6b6b':'#9d4edd'; ctx.fillRect(player.x-player.width/2,player.y-player.height/2,player.width,player.height); ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.strokeRect(player.x-player.width/2,player.y-player.height/2,player.width,player.height); if(player.damageType!=='physical'){ ctx.fillStyle=getElementColor(player.damageType); ctx.font='12px Orbitron'; ctx.textAlign='center'; ctx.fillText(player.damageType.toUpperCase(),player.x,player.y-25); } ctx.restore(); }
+        function renderEnemies(){ enemies.forEach(e=>{ ctx.save(); ctx.shadowColor=e.color; ctx.shadowBlur=10; ctx.fillStyle=e.color; ctx.beginPath(); ctx.arc(e.x,e.y,e.size/2,0,Math.PI*2); ctx.fill(); renderHealthBar(e.x,e.y-e.size/2-10,e.health,e.maxHealth,30); ctx.restore(); }); }
+        function renderBosses(){ bosses.forEach(b=>{ ctx.save(); ctx.shadowColor=b.color; ctx.shadowBlur=25; ctx.fillStyle=b.color; ctx.beginPath(); ctx.arc(b.x,b.y,b.size/2,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#ffd700'; ctx.lineWidth=3; ctx.stroke(); ctx.fillStyle='#ffffff'; ctx.font='14px Orbitron'; ctx.textAlign='center'; ctx.fillText(b.name,b.x,b.y-b.size/2-20); renderHealthBar(b.x,b.y-b.size/2-10,b.health,b.maxHealth,50); ctx.restore(); }); }
+        function renderShadowArmy(){ shadowArmy.forEach(s=>{ ctx.save(); ctx.shadowColor='#9d4edd'; ctx.shadowBlur=15; ctx.fillStyle='#9d4edd'; ctx.beginPath(); ctx.arc(s.x,s.y,s.size/2,0,Math.PI*2); ctx.fill(); ctx.strokeStyle='#ffffff'; ctx.lineWidth=2; ctx.stroke(); renderHealthBar(s.x,s.y-s.size/2-10,s.health,s.maxHealth,25); ctx.restore(); }); }
+        function renderParticles(){ particles.forEach(p=>{ ctx.save(); ctx.globalAlpha=Math.max(0,p.life/1000); ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }); }
+        function renderHealthBar(x,y,c,m,w){ const h=4,p=Math.max(0,c/m); ctx.fillStyle='rgba(0,0,0,0.5)'; ctx.fillRect(x-w/2,y,w,h); ctx.fillStyle=p>0.5?'#00ff00':p>0.25?'#ffff00':'#ff0000'; ctx.fillRect(x-w/2,y,w*p,h); ctx.strokeStyle='#ffffff'; ctx.lineWidth=1; ctx.strokeRect(x-w/2,y,w,h); }
+        function getElementColor(e){ const c={fire:'#ff4757',ice:'#70a1ff',shadow:'#9d4edd',physical:'#ffffff'}; return c[e]||'#ffffff'; }
+        function updateHealthDisplay(){ const f=document.getElementById('healthFill'); const t=document.getElementById('healthText'); const p=Math.max(0,(player.health/player.maxHealth)*100); f.style.width=p+'%'; t.textContent=`${Math.floor(Math.max(0,player.health))}/${player.maxHealth}`; }
+        function updateExpDisplay(){ const f=document.getElementById('expFill'); const t=document.getElementById('expText'); const p=Math.max(0,(player.exp/player.expToNext)*100); f.style.width=p+'%'; t.textContent=`${Math.floor(player.exp)}/${Math.floor(player.expToNext)}`; }
+        function updateStatsDisplay(){ document.getElementById('playerLevel').textContent=player.level; document.getElementById('score').textContent=gameState.score; document.getElementById('attackDamage').textContent=Math.floor(player.attackDamage); document.getElementById('moveSpeed').textContent=player.speed; document.getElementById('shadowCount').textContent=`${shadowArmy.length}/8`; const dt=document.getElementById('damageType'); dt.textContent=player.damageType.charAt(0).toUpperCase()+player.damageType.slice(1); dt.className=player.damageType; }
+        function updateWaveDisplay(){ document.getElementById('waveNumber').textContent=gameState.wave; document.getElementById('enemyCount').textContent=enemies.length+bosses.length; if(bosses.length>0){ document.getElementById('bossStatus').textContent=bosses[0].name; updateBossHealthBar(bosses[0]); } else { document.getElementById('bossStatus').textContent='None'; document.getElementById('bossHealthContainer').style.display='none'; } }
+        function updateShadowDisplay(){ for(let i=0;i<8;i++){ const s=document.getElementById(`shadow${i}`); if(i<shadowArmy.length){ s.innerHTML=`Shadow<br>${Math.floor(shadowArmy[i].health)}`; s.classList.add('shadow-active'); } else { s.innerHTML='Empty<br>Slot'; s.classList.remove('shadow-active'); } } document.getElementById('shadowCount').textContent=`${shadowArmy.length}/8`; }
+        function updateArtifactDisplay(){ document.getElementById('artifactCount').textContent=`${player.artifacts.length}/3`; for(let i=0;i<3;i++){ const s=document.getElementById(`artifact${i}`); if(i<player.artifacts.length){ const a=player.artifacts[i]; s.textContent=getArtifactEmoji(a.type); s.className=`artifact-slot artifact-equipped ${a.rarity}`; } else { s.textContent=getArtifactEmoji('empty'); s.className='artifact-slot'; } } }
+        function getArtifactEmoji(t){ const m={shadow:'👑',fire:'🔥',ice:'❄️',physical:'⚔️',empty:'📿'}; return m[t]||'📿'; }
+        function unlockAchievement(k){ if(achievements[k]&&!achievements[k].unlocked){ achievements[k].unlocked=true; showAchievement(achievements[k].name); sessionStorage.setItem('achievements',JSON.stringify(achievements)); } }
+        function showAchievement(n){ const p=document.getElementById('achievementPopup'); p.textContent=`Achievement: ${n}`; p.classList.add('achievement-show'); setTimeout(()=>p.classList.remove('achievement-show'),3000); }
+        function togglePause(){ gameState.paused=!gameState.paused; const m=document.getElementById('pauseMenu'); if(gameState.paused){ m.style.display='block'; updatePauseMenu(); } else m.style.display='none'; }
+        function toggleMute(){ soundEnabled=!soundEnabled; document.querySelectorAll('.btn.btn-secondary').forEach(btn=>{ if(btn.textContent.includes('Sound')||btn.textContent.includes('🔊')||btn.textContent.includes('🔇')) btn.textContent=soundEnabled?'🔊 Sound':'🔇 Sound'; }); }
+        function restartGame(){ gameState={paused:false,currentRank:0,wave:1,score:0,bossDefeated:false,lastDefeatedBoss:null,upgradesPending:0,waveInProgress:false,nextWaveTimer:0,achievements:achievements,totalScore:parseInt(sessionStorage.getItem('totalScore')||'0'),highestWave:parseInt(sessionStorage.getItem('highestWave')||'1'),screenShake:0,difficulty:1.0}; Object.assign(player,{x:600,y:350,health:100,maxHealth:100,level:1,exp:0,expToNext:100,attackDamage:25,speed:3,critChance:0.1,critDamage:2.0,vampirism:0,damageType:'physical',elementalDamage:0,resistances:{fire:0,ice:0,shadow:0},artifacts:[]}); enemies=[]; bosses=[]; shadowArmy=[]; particles=[]; updateHealthDisplay(); updateExpDisplay(); updateStatsDisplay(); updateWaveDisplay(); updateShadowDisplay(); updateArtifactDisplay(); document.getElementById('pauseMenu').style.display='none'; document.getElementById('upgradeModal').style.display='none'; document.getElementById('bossDefeatModal').style.display='none'; gameState.nextWaveTimer=2000; }
+        function gameOver(){ const total=parseInt(sessionStorage.getItem('totalScore')||'0'); if(gameState.score>total) sessionStorage.setItem('totalScore',gameState.score); const hw=parseInt(sessionStorage.getItem('highestWave')||'1'); if(gameState.wave>hw) sessionStorage.setItem('highestWave',gameState.wave); alert(`Game Over! Final Score: ${gameState.score}, Wave: ${gameState.wave}`); restartGame(); }
+        function updatePauseMenu(){ document.getElementById('achievementProgress').textContent=`${Object.values(achievements).filter(a=>a.unlocked).length}/15`; document.getElementById('highestWave').textContent=sessionStorage.getItem('highestWave')||'1'; document.getElementById('totalScore').textContent=sessionStorage.getItem('totalScore')||'0'; }
+        function initGame(){ initAudio(); updateHealthDisplay(); updateExpDisplay(); updateStatsDisplay(); updateWaveDisplay(); updateShadowDisplay(); updateArtifactDisplay(); gameState.waveInProgress=false; gameState.nextWaveTimer=1000; requestAnimationFrame(gameLoop); }
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
