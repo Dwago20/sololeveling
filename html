@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solo Leveling: Shadow Monarch - Enhanced</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a0033 50%, #000000 100%);
+            color: #ffffff;
+            font-family: 'Orbitron', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 1200px;
+            height: 700px;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1e1e3f 100%);
+            border: 4px solid #9d4edd;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(157, 78, 221, 0.3);
+        }
+
+        #gameCanvas {
+            display: block;
+            background: radial-gradient(ellipse at center, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+        }
+
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 15px;
+            pointer-events: none;
+        }
+
+        .hud-panel {
+            background: rgba(0, 0, 0, 0.85);
+            padding: 12px;
+            border-radius: 15px;
+            border: 2px solid #9d4edd;
+            backdrop-filter: blur(15px);
+            box-shadow: inset 0 0 20px rgba(157, 78, 221, 0.1);
+        }
+
+        .rank-display {
+            font-size: 24px;
+            font-weight: 900;
+            color: #ffd700;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+            text-align: center;
+            margin-bottom: 8px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 12px;
+        }
+
+        .health-bar, .exp-bar, .boss-health-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #666;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .health-bar { width: 100px; }
+        .exp-bar { width: 100px; }
+        .boss-health-bar { width: 180px; }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4757 0%, #ff6b7a 100%);
+            transition: width 0.3s ease;
+            box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .exp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3742fa 0%, #5352ed 100%);
+            transition: width 0.3s ease;
+            box-shadow: inset 0 0 5px rgba(255, 255, 255, 0.3);
+        }
+
+        .boss-health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff3838 0%, #ff6b6b 50%, #ffa502 100%);
+            transition: width 0.3s ease;
+            box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.4);
+        }
+
+        #shadowArmy {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            pointer-events: none;
+        }
+
+        .shadow-slot {
+            width: 70px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 3px solid #4a5568;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .shadow-active {
+            border-color: #9d4edd;
+            background: rgba(157, 78, 221, 0.2);
+            box-shadow: 0 0 20px rgba(157, 78, 221, 0.5);
+            transform: scale(1.05);
+        }
+
+        .modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 3px solid #9d4edd;
+            text-align: center;
+            display: none;
+            pointer-events: all;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 0 50px rgba(157, 78, 221, 0.3);
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal h2 {
+            color: #9d4edd;
+            margin-bottom: 20px;
+            font-size: 24px;
+            text-shadow: 0 0 10px rgba(157, 78, 221, 0.8);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #9d4edd 0%, #c77dff 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            margin: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            font-family: 'Orbitron', monospace;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(157, 78, 221, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #4a5568 0%, #6a7d95 100%);
+        }
+
+        #upgradeModal {
+            max-width: 700px;
+        }
+
+        .upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .upgrade-card {
+            background: rgba(157, 78, 221, 0.1);
+            border: 2px solid #9d4edd;
+            border-radius: 15px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upgrade-card:hover {
+            background: rgba(157, 78, 221, 0.2);
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(157, 78, 221, 0.3);
+        }
+
+        .upgrade-card h3 {
+            color: #c77dff;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .upgrade-card p {
+            font-size: 11px;
+            opacity: 0.8;
+            line-height: 1.3;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 11px;
+            opacity: 0.7;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 8px;
+        }
+
+        .damage-number {
+            position: absolute;
+            font-size: 14px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .achievement-popup {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(255, 215, 0, 0.95);
+            color: #000;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            opacity: 0;
+            transform: translateX(300px);
+            transition: all 0.5s ease;
+        }
+
+        .achievement-show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .element-indicator {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .fire { color: #ff4757; }
+        .ice { color: #70a1ff; }
+        .shadow { color: #9d4edd; }
+        .physical { color: #ffffff; }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-2px, 2px); }
+            50% { transform: translate(2px, -2px); }
+            75% { transform: translate(-2px, -2px); }
+        }
+
+        .floating-damage {
+            animation: floatUp 1s ease-out forwards;
+        }
+
+        .screen-shake {
+            animation: screenShake 0.3s ease-in-out;
+        }
+
+        #artifacts {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .artifact-slot {
+            width: 50px;
+            height: 50px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #666;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .artifact-equipped {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .legendary { border-color: #ff6348; box-shadow: 0 0 15px rgba(255, 99, 72, 0.5); }
+        .epic { border-color: #9c88ff; box-shadow: 0 0 15px rgba(156, 136, 255, 0.5); }
+        .rare { border-color: #70a1ff; box-shadow: 0 0 15px rgba(112, 161, 255, 0.5); }
+        .uncommon { border-color: #7bed9f; box-shadow: 0 0 15px rgba(123, 237, 159, 0.5); }
+
+        #mobileControls {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            display: none;
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(3, 60px);
+            gap: 10px;
+        }
+
+        .mobile-btn {
+            background: rgba(157, 78, 221, 0.7);
+            border: 2px solid #9d4edd;
+            border-radius: 50%;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+
+        .mobile-btn:active {
+            background: rgba(157, 78, 221, 1);
+            transform: scale(0.95);
+        }
+
+        @media (max-width: 768px) {
+            #mobileControls { display: grid; }
+            .controls { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="700"></canvas>
+        
+        <div id="ui">
+            <div id="hud">
+                <div class="hud-panel">
+                    <div class="rank-display" id="rankDisplay">F-RANK GATE</div>
+                    <div class="stat-row">
+                        <span>Level:</span>
+                        <span id="playerLevel">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Score:</span>
+                        <span id="score">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>HP:</span>
+                        <div class="health-bar">
+                            <div class="health-fill" id="healthFill"></div>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <span id="healthText">100/100</span>
+                    </div>
+                </div>
+                
+                <div class="hud-panel">
+                    <div class="stat-row">
+                        <span>Wave:</span>
+                        <span id="waveNumber">1</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Enemies:</span>
+                        <span id="enemyCount">0</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Boss:</span>
+                        <span id="bossStatus">None</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>EXP:</span>
+                        <div class="exp-bar">
+                            <div class="exp-fill" id="expFill"></div>
+                        </div>
+                    </div>
+                    <div class="stat-row">
+                        <span id="expText">0/100</span>
+                    </div>
+                </div>
+
+                <div class="hud-panel">
+                    <div class="stat-row">
+                        <span>ATK:</span>
+                        <span id="attackDamage">25</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>SPD:</span>
+                        <span id="moveSpeed">3</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Shadows:</span>
+                        <span id="shadowCount">0/8</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Element:</span>
+                        <span id="damageType" class="physical">Physical</span>
+                    </div>
+                    <div class="stat-row" id="bossHealthContainer" style="display: none;">
+                        <span>Boss HP:</span>
+                        <div class="boss-health-bar">
+                            <div class="boss-health-fill" id="bossHealthFill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hud-panel">
+                    <div class="stat-row">
+                        <span>Artifacts:</span>
+                        <span id="artifactCount">0/3</span>
+                    </div>
+                    <div id="artifacts">
+                        <div class="artifact-slot" id="artifact0">📿</div>
+                        <div class="artifact-slot" id="artifact1">⚔️</div>
+                        <div class="artifact-slot" id="artifact2">🛡️</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="shadowArmy">
+                <div class="shadow-slot" id="shadow0">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow1">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow2">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow3">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow4">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow5">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow6">Empty<br>Slot</div>
+                <div class="shadow-slot" id="shadow7">Empty<br>Slot</div>
+            </div>
+
+            <div class="controls">
+                <strong>WASD/Arrows:</strong> Move<br>
+                <strong>P:</strong> Pause<br>
+                <strong>M:</strong> Mute<br>
+                <strong>Auto-Attack:</strong> ON
+            </div>
+
+            <div id="mobileControls">
+                <div></div>
+                <div class="mobile-btn" data-key="w">↑</div>
+                <div></div>
+                <div class="mobile-btn" data-key="a">←</div>
+                <div class="mobile-btn" data-key="p">⏸</div>
+                <div class="mobile-btn" data-key="d">→</div>
+                <div></div>
+                <div class="mobile-btn" data-key="s">↓</div>
+                <div></div>
+            </div>
+        </div>
+
+        <div id="achievementPopup" class="achievement-popup">
+            Achievement Unlocked!
+        </div>
+
+        <div id="bossDefeatModal" class="modal">
+            <h2>BOSS DEFEATED!</h2>
+            <p id="bossDefeatText">You have defeated the Shadow Orc!</p>
+            <p style="color: #c77dff; margin: 20px 0;">The fallen shall rise to serve the Shadow Monarch!</p>
+            <div id="artifactDrop" style="display: none; margin: 20px 0;">
+                <h3 style="color: #ffd700;">Legendary Artifact Obtained!</h3>
+                <p id="artifactName" style="color: #ff6348;"></p>
+                <p id="artifactDesc" style="font-size: 12px; opacity: 0.8;"></p>
+            </div>
+            <button class="btn" onclick="resurrectBoss()">⚡ ARISE! ⚡</button>
+        </div>
+
+        <div id="upgradeModal" class="modal">
+            <h2>LEVEL UP! Choose Your Power</h2>
+            <div class="upgrade-grid" id="upgradeOptions">
+                <!-- Upgrades will be generated here -->
+            </div>
+        </div>
+
+        <div id="pauseMenu" class="modal">
+            <h2>⏸️ GAME PAUSED</h2>
+            <p>Shadow Monarch's Training</p>
+            <div style="margin: 20px 0;">
+                <p>Achievements: <span id="achievementProgress">0/15</span></p>
+                <p>Highest Wave: <span id="highestWave">1</span></p>
+                <p>Total Score: <span id="totalScore">0</span></p>
+            </div>
+            <button class="btn" onclick="togglePause()">Resume</button>
+            <button class="btn btn-secondary" onclick="toggleMute()">🔊 Sound</button>
+            <button class="btn btn-secondary" onclick="restartGame()">Restart</button>
+        </div>
+    </div>
+
+    <script>
+        // Game canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Audio context and sound system
+        let audioContext = null;
+        let soundEnabled = true;
+        const sounds = {};
+
+        // Initialize audio
+        function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.log('Audio not supported');
+                soundEnabled = false;
+            }
+        }
+
+        // Create sound effect
+        function createSound(frequency, duration, type = 'sine', volume = 0.1) {
+            if (!soundEnabled || !audioContext) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                oscillator.type = type;
+                
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                console.log('Sound creation failed');
+            }
+        }
+
+        // Sound effects
+        function playSound(soundType) {
+            if (!soundEnabled) return;
+            
+            switch (soundType) {
+                case 'hit':
+                    createSound(200, 0.1, 'square', 0.05);
+                    break;
+                case 'kill':
+                    createSound(300, 0.2, 'sawtooth', 0.08);
+                    break;
+                case 'levelup':
+                    createSound(440, 0.3, 'sine', 0.1);
+                    createSound(550, 0.3, 'sine', 0.08);
+                    break;
+                case 'boss':
+                    createSound(100, 0.5, 'triangle', 0.1);
+                    break;
+                case 'arise':
+                    createSound(666, 0.4, 'sawtooth', 0.12);
+                    break;
+            }
+        }
+
+        // Game state with save system
+        let gameState = {
+            paused: false,
+            currentRank: 0,
+            wave: 1,
+            score: 0,
+            bossDefeated: false,
+            lastDefeatedBoss: null,
+            upgradesPending: 0,
+            waveInProgress: false,
+            nextWaveTimer: 0,
+            achievements: {},
+            totalScore: parseInt(sessionStorage.getItem('totalScore') || '0'),
+            highestWave: parseInt(sessionStorage.getItem('highestWave') || '1'),
+            screenShake: 0,
+            difficulty: 1.0
+        };
+
+        // Achievement system
+        const achievements = {
+            firstKill: { name: "First Blood", desc: "Defeat your first enemy", unlocked: false },
+            firstBoss: { name: "Boss Hunter", desc: "Defeat your first boss", unlocked: false },
+            shadowArmy: { name: "Rise, My Shadows!", desc: "Resurrect your first shadow", unlocked: false },
+            wave10: { name: "Persistent Hunter", desc: "Reach wave 10", unlocked: false },
+            level10: { name: "Growing Stronger", desc: "Reach level 10", unlocked: false },
+            rankUp: { name: "Rank Advancement", desc: "Advance to E-Rank", unlocked: false },
+            perfectWave: { name: "Flawless Victory", desc: "Complete a wave without taking damage", unlocked: false },
+            speedKill: { name: "Lightning Strike", desc: "Kill 5 enemies in 3 seconds", unlocked: false },
+            artifact: { name: "Treasure Hunter", desc: "Obtain your first artifact", unlocked: false },
+            fullArmy: { name: "Shadow Legion", desc: "Have a full shadow army (8 shadows)", unlocked: false },
+            critMaster: { name: "Critical Eye", desc: "Achieve 50% crit chance", unlocked: false },
+            tankMode: { name: "Immovable Object", desc: "Reach 500 max HP", unlocked: false },
+            speedDemon: { name: "Flash Step", desc: "Reach 8 movement speed", unlocked: false },
+            damageDealer: { name: "One Punch", desc: "Deal 200+ damage in a single hit", unlocked: false },
+            survivor: { name: "Shadow Monarch", desc: "Reach S-Rank", unlocked: false }
+        };
+
+        // Load achievements
+        const savedAchievements = sessionStorage.getItem('achievements');
+        if (savedAchievements) {
+            const parsed = JSON.parse(savedAchievements);
+            Object.keys(parsed).forEach(key => {
+                if (achievements[key]) {
+                    achievements[key].unlocked = parsed[key];
+                }
+            });
+        }
+
+        // Rank system with dynamic difficulty
+        const ranks = [
+            { name: 'F-RANK', color: '#888888', maxWaves: 5, difficulty: 1.0 },
+            { name: 'E-RANK', color: '#8B4513', maxWaves: 8, difficulty: 1.2 },
+            { name: 'D-RANK', color: '#32CD32', maxWaves: 12, difficulty: 1.4 },
+            { name: 'C-RANK', color: '#4169E1', maxWaves: 16, difficulty: 1.6 },
+            { name: 'B-RANK', color: '#9932CC', maxWaves: 20, difficulty: 1.8 },
+            { name: 'A-RANK', color: '#FFD700', maxWaves: 25, difficulty: 2.0 },
+            { name: 'S-RANK', color: '#FF4500', maxWaves: 30, difficulty: 2.3 }
+        ];
+
+        // Enhanced player
+        const player = {
+            x: 600,
+            y: 350,
+            width: 20,
+            height: 20,
+            speed: 3,
+            health: 100,
+            maxHealth: 100,
+            level: 1,
+            exp: 0,
+            expToNext: 100,
+            attackDamage: 25,
+            attackRange: 100,
+            attackSpeed: 1.0,
+            lastAttack: 0,
+            attackCooldown: 800,
+            critChance: 0.1,
+            critDamage: 2.0,
+            vampirism: 0,
+            damageType: 'physical',
+            elementalDamage: 0,
+            resistances: { fire: 0, ice: 0, shadow: 0 },
+            lastDamageTaken: 0,
+            invulnTime: 0,
+            abilities: {
+                shadowStep: false,
+                berserker: false,
+                auraOfDeath: false,
+                multiStrike: false
+            },
+            artifacts: []
+        };
+
+        // Game objects arrays
+        let enemies = [];
+        let bosses = [];
+        let shadowArmy = [];
+        let particles = [];
+        let killStreak = 0;
+        let killStreakTimer = 0;
+
+        // Enhanced enemy types
+        const enemyTypes = {
+            goblin: { 
+                hp: 40, speed: 2, damage: 12, size: 14, color: '#228B22', exp: 20,
+                ai: 'aggressive', attackRange: 25, damageType: 'physical',
+                resistances: { fire: -0.2, ice: 0, shadow: 0.1 }
+            },
+            skeleton: { 
+                hp: 60, speed: 1.5, damage: 18, size: 16, color: '#F5F5DC', exp: 30,
+                ai: 'guard', attackRange: 30, damageType: 'physical',
+                resistances: { fire: -0.3, ice: 0.4, shadow: 0.2 }
+            },
+            orc: { 
+                hp: 80, speed: 1.2, damage: 25, size: 18, color: '#8B4513', exp: 40,
+                ai: 'tank', attackRange: 35, damageType: 'physical',
+                resistances: { fire: 0.1, ice: -0.1, shadow: 0 }
+            },
+            demon: { 
+                hp: 90, speed: 2.5, damage: 30, size: 20, color: '#8B0000', exp: 50,
+                ai: 'hit_and_run', attackRange: 45, damageType: 'fire',
+                resistances: { fire: 0.5, ice: -0.4, shadow: 0.1 }
+            }
+        };
+
+        // Boss types
+        const bossTypes = {
+            shadowOrc: { 
+                hp: 300, speed: 1.5, damage: 50, size: 40, color: '#4B0082', 
+                name: 'Shadow Orc', exp: 300, ai: 'boss', damageType: 'shadow',
+                abilities: ['charge', 'slam', 'shadowBurst'],
+                resistances: { fire: 0.1, ice: 0.1, shadow: 0.3 }
+            }
+        };
+
+        // Input handling
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key.toLowerCase() === 'p') {
+                togglePause();
+            }
+            if (e.key.toLowerCase() === 'm') {
+                toggleMute();
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false
