@@ -145,6 +145,15 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        
+        // Test canvas immediately
+        if (ctx) {
+            console.log('Canvas context obtained successfully');
+            ctx.fillStyle = '#00ff00';
+            ctx.fillRect(100, 100, 20, 20);
+        } else {
+            console.error('Failed to get canvas context');
+        }
         let audioContext = null; let soundEnabled = true;
         function initAudio(){ try{ audioContext = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ console.log('Audio not supported'); soundEnabled=false; } }
         function createSound(f,d,t='sine',v=0.1){ if(!soundEnabled||!audioContext) return; try{ const o=audioContext.createOscillator(); const g=audioContext.createGain(); o.connect(g); g.connect(audioContext.destination); o.frequency.setValueAtTime(f,audioContext.currentTime); o.type=t; g.gain.setValueAtTime(v,audioContext.currentTime); g.gain.exponentialRampToValueAtTime(0.01,audioContext.currentTime+d); o.start(audioContext.currentTime); o.stop(audioContext.currentTime+d);}catch(e){console.log('Sound creation failed');} }
@@ -161,7 +170,18 @@
         document.addEventListener('keydown',(e)=>{ const k=e.key.toLowerCase(); keys[k]=true; if(k==='p') togglePause(); if(k==='m') toggleMute(); });
         document.addEventListener('keyup',(e)=>{ keys[e.key.toLowerCase()]=false; });
         document.querySelectorAll('.mobile-btn').forEach(btn=>{ btn.addEventListener('touchstart',(e)=>{ e.preventDefault(); const k=btn.dataset.key; keys[k]=true; if(k==='p') togglePause(); }); btn.addEventListener('touchend',(e)=>{ e.preventDefault(); const k=btn.dataset.key; keys[k]=false; }); });
-        let lastTime=0; function gameLoop(t){ if(gameState.paused){ requestAnimationFrame(gameLoop); return; } const dt=t-lastTime; lastTime=t; update(dt); render(); requestAnimationFrame(gameLoop); }
+        let lastTime=0; 
+        function gameLoop(t){ 
+            if(gameState.paused){ 
+                requestAnimationFrame(gameLoop); 
+                return; 
+            } 
+            const dt=t-lastTime; 
+            lastTime=t; 
+            update(dt); 
+            render(); 
+            requestAnimationFrame(gameLoop); 
+        }
         function update(dt){ if(gameState.paused) return; if(gameState.screenShake>0) gameState.screenShake-=dt; updatePlayer(dt); autoAttack(); updateEnemies(dt); updateBosses(dt); updateShadowArmy(dt); updateParticles(dt); updateWaveSystem(dt); if(killStreakTimer>0){ killStreakTimer-=dt; if(killStreakTimer<=0) killStreak=0; } checkAchievements(); updateWaveDisplay(); }
         function updatePlayer(dt){ let dx=0,dy=0; if(keys['w']||keys['arrowup']) dy-=player.speed; if(keys['s']||keys['arrowdown']) dy+=player.speed; if(keys['a']||keys['arrowleft']) dx-=player.speed; if(keys['d']||keys['arrowright']) dx+=player.speed; if(dx&&dy){ dx*=0.707; dy*=0.707; } player.x+=dx; player.y+=dy; player.x=Math.max(player.width/2,Math.min(canvas.width-player.width/2,player.x)); player.y=Math.max(player.height/2,Math.min(canvas.height-player.height/2,player.y)); if(player.invulnTime>0) player.invulnTime-=dt; }
         function autoAttack(){ const now=Date.now(); if(now-player.lastAttack<player.attackCooldown) return; let target=null,closest=Infinity; const hostiles=bosses.length?[...bosses,...enemies]:[...enemies]; hostiles.forEach(en=>{ const d=Math.hypot(en.x-player.x,en.y-player.y); if(d<=player.attackRange&&d<closest){ closest=d; target=en; } }); if(target){ attack(target); player.lastAttack=now; } }
@@ -222,6 +242,10 @@
         function generateUpgradeOptions(){ const all=[{name:'Strength',description:'Increase attack damage by 15',effect:()=>player.attackDamage+=15},{name:'Vitality',description:'Increase max health by 50',effect:()=>player.maxHealth+=50},{name:'Agility',description:'Increase movement speed by 1',effect:()=>player.speed+=1},{name:'Critical Strike',description:'Increase crit chance by 10%',effect:()=>player.critChance+=0.1},{name:'Vampirism',description:'Gain 10% life steal',effect:()=>player.vampirism+=0.1},{name:'Shadow Mastery',description:'Increase elemental damage by 25',effect:()=>player.elementalDamage+=25},{name:'Fire Affinity',description:'Convert damage to fire and add 20 fire damage',effect:()=>{ player.damageType='fire'; player.elementalDamage+=20; }},{name:'Ice Affinity',description:'Convert damage to ice and add 18 ice damage',effect:()=>{ player.damageType='ice'; player.elementalDamage+=18; }}]; return all.sort(()=>0.5-Math.random()).slice(0,3); }
         function applyUpgrade(u){ u.effect(); gameState.upgradesPending--; document.getElementById('upgradeModal').style.display='none'; gameState.paused=false; updateStatsDisplay(); updateHealthDisplay(); }
         function render(){ 
+            // Test if canvas is working at all
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(0, 0, 50, 50);
+            
             ctx.clearRect(0,0,canvas.width,canvas.height); 
             if(gameState.screenShake>0){ 
                 const s=gameState.screenShake/100; 
@@ -286,6 +310,7 @@
         function gameOver(){ const total=parseInt(sessionStorage.getItem('totalScore')||'0'); if(gameState.score>total) sessionStorage.setItem('totalScore',gameState.score); const hw=parseInt(sessionStorage.getItem('highestWave')||'1'); if(gameState.wave>hw) sessionStorage.setItem('highestWave',gameState.wave); alert(`Game Over! Final Score: ${gameState.score}, Wave: ${gameState.wave}`); restartGame(); }
         function updatePauseMenu(){ document.getElementById('achievementProgress').textContent=`${Object.values(achievements).filter(a=>a.unlocked).length}/15`; document.getElementById('highestWave').textContent=sessionStorage.getItem('highestWave')||'1'; document.getElementById('totalScore').textContent=sessionStorage.getItem('totalScore')||'0'; }
         function initGame(){ 
+            console.log('Game initialization started...');
             initAudio(); 
             updateHealthDisplay(); 
             updateExpDisplay(); 
@@ -295,13 +320,25 @@
             updateArtifactDisplay(); 
             gameState.waveInProgress = false; 
             gameState.nextWaveTimer = 1000; 
-            // Start first wave after a short delay
-            setTimeout(() => {
-                startWave();
-            }, 1500);
+            
+            console.log('Starting game loop...');
             requestAnimationFrame(gameLoop); 
+            
+            // Start first wave immediately
+            console.log('Starting first wave...');
+            startWave();
         }
         window.addEventListener('load', initGame);
+        
+        // Add error handling
+        window.addEventListener('error', (e) => {
+            console.error('JavaScript error:', e.error);
+        });
+        
+        // Test if everything is loaded
+        console.log('Script loaded, canvas:', canvas);
+        console.log('Player object:', player);
+        console.log('Game state:', gameState);
     </script>
 </body>
 </html>
